@@ -15,6 +15,7 @@ auth_client = cbpro.AuthenticatedClient(public, secret, passphrase, api_url)
 
 # print(auth_client.get_accounts())
 
+
 sell_price = 53000
 sell_amount = 0.3
 
@@ -32,3 +33,4 @@ while True:
     else:
         print((f"Doing nothing as price is {price:,}\n"))
     time.sleep(10)
+    break
