@@ -1,59 +1,53 @@
-from os import access
-import tweepy
-import textblob
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import re
+from nltk.util import pr
+from numpy.lib.index_tricks import diag_indices_from
+# from numpy import negative, positive
+import requests
+import auth
+from datetime import datetime
+import time
+import schedule
+import tweet_data
+from tweet_data import positive, negative
 
-# access keys by each lines
-all_keys = open('tweetkeys', 'r').read().splitlines()
+buy_amount = 0.2
+sell_amount = 0.3
 
-api_key = all_keys[0]
-api_key_sec = all_keys[1]
-acc_token = all_keys[2]
-acc_token_sec = all_keys[3]
+diff, diff_n = 0, 0
 
-# authenticate the twitter api
-auth_twt = tweepy.OAuthHandler(api_key,api_key_sec)
-auth_twt.set_access_token(acc_token, acc_token_sec)
+# p, n = 30, 70
 
-api = tweepy.API(auth_twt, wait_on_rate_limit=True)
+if positive > negative:
+    diff = ((positive-negative)/((positive+negative)/2))*100
+elif positive < negative:
+    diff_n = (((negative-positive)/((negative+positive)/2))*100)*-1
 
-crypto_currency = 'Bitcoin'
+print(diff, diff_n)
 
-end = "2021-09-25"
-
-search = f'#{crypto_currency} -filter:retweets'
-
-# return tweets in extended mode
-tweet_cursor = tweepy.Cursor(api.search_tweets, q=search, lang='en', until=end, tweet_mode='extended').items(100)
-
-tweets = [tweet.full_text for tweet in tweet_cursor]
-
-# create dataframe for all the tweets
-tweets_df = pd.DataFrame(tweets, columns=['Tweets'])
-
-# clean tweets by replacing unwanted text eg, links, hashtags, mentions and new lines
-for _, row in tweets_df.iterrows():
-    row['Tweets'] = re.sub('http\S+', '', row['Tweets'])
-    row['Tweets'] = re.sub('#\S+', '', row['Tweets'])
-    row['Tweets'] = re.sub('@\S+', '', row['Tweets'])
-    row['Tweets'] = re.sub('\\n', '', row['Tweets']) #\\ double backlash to remove newlines instead of adding newlines
-    # add emojis remove
-
-    # print(row['Tweets'])
-
-# collect polarity scores of tweets and match them to positives(+0) and negatives(-0)
-tweets_df['Polarity'] = tweets_df['Tweets'].map(lambda tweet: textblob.TextBlob(tweet).sentiment.polarity)
-tweets_df['Result'] = tweets_df['Polarity'].map(lambda pol: '+' if pol > 0 else '-' )
-# print(tweets_df)
-
-positive = tweets_df[tweets_df.Result == '+'].count()['Tweets']
-negative = tweets_df[tweets_df.Result == '-'].count()['Tweets']
-
-plt.bar([0,1], [positive, negative], label=['Positive', 'Negative'], color=['green', 'red'])
-# plt.legend()
+# if p > n:
+#     diff = ((p-n)/((p+n)/2))*100
+# elif p < n:
+#     diff_n = (((n-p)/((n+p)/2))*100)*-1
 
 
-plt.show()
+def twt():
+    if not diff_n:
+        pass
+    if int(diff) >= 30:
+        print(f'Buying {buy_amount} Bitcoin')
+        auth.auth_client.buy(product_id='BTC-US', size=buy_amount, order_type='market' )
+    elif diff_n and int(diff_n) >= 30:
+        print(f'Selling {sell_amount} Bitcoin')
+        auth.auth_client.sell(product_id='BTC-US', size=sell_amount, order_type='market' )
+    else:
+        print('hodl')
+    
+
+schedule.every().day.at('05:51:00').do(twt)
+
+while True:
+    schedule.run_pending()
+    time.sleep(1)
+
+# while True:
+#     twt()
+#     time.sleep(10)
